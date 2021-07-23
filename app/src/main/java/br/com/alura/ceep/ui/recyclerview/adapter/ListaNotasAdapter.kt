@@ -11,6 +11,10 @@ import android.widget.TextView
 import androidx.databinding.BindingAdapter
 import androidx.databinding.DataBindingUtil
 import androidx.databinding.ViewDataBinding
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -18,6 +22,7 @@ import br.com.alura.ceep.BR
 import br.com.alura.ceep.R
 import br.com.alura.ceep.databinding.ItemNotaBinding
 import br.com.alura.ceep.model.Nota
+import br.com.alura.ceep.ui.databinding.NotaData
 import br.com.alura.ceep.ui.extensions.carregaImagem
 import kotlinx.android.synthetic.main.item_nota.view.*
 
@@ -31,7 +36,19 @@ class ListaNotasAdapter(
 
         //ItemNotaBinding é o nome da classe que o compilador gera caso queira mudar o nome, adicionar a propriedade class no layout na tag data
         val viewDataBinding = ItemNotaBinding.inflate(inflater, parent, false)
-        return ViewHolder(viewDataBinding)
+        return ViewHolder(viewDataBinding).also {
+            viewDataBinding.lifecycleOwner = it
+        }
+    }
+
+    override fun onViewAttachedToWindow(holder: ViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        holder.marcaComoAtivo()
+    }
+
+    override fun onViewDetachedFromWindow(holder: ViewHolder) {
+        super.onViewDetachedFromWindow(holder)
+        holder.marcaComoDesativo()
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -40,13 +57,27 @@ class ListaNotasAdapter(
         }
     }
 
-    inner class ViewHolder(private val viewDataBinding: ItemNotaBinding) : RecyclerView.ViewHolder(viewDataBinding.root) {
+    inner class ViewHolder(private val viewDataBinding: ItemNotaBinding) : RecyclerView.ViewHolder(viewDataBinding.root), LifecycleOwner {
 
         private lateinit var nota: Nota
 
+        private val registry = LifecycleRegistry(this)
+
         init {
             viewDataBinding.listener = this
+            registry.markState(Lifecycle.State.INITIALIZED)
         }
+
+        fun marcaComoAtivo(){
+            registry.markState(Lifecycle.State.STARTED)
+        }
+
+        fun marcaComoDesativo(){
+            registry.markState(Lifecycle.State.DESTROYED)
+        }
+
+
+        override fun getLifecycle(): Lifecycle = registry
 
         fun clicaNaNota(view: View){
             if (::nota.isInitialized) {
@@ -56,8 +87,9 @@ class ListaNotasAdapter(
 
         fun vincula(nota: Nota) {
             this.nota = nota
-            viewDataBinding.nota = nota
+            viewDataBinding.nota = NotaData(nota)
         }
+
     }
 }
 
